@@ -1,0 +1,34 @@
+\documentclass[lang=cn,10pt,twoside]{elegantbook}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+\usepackage{pgfplots}
+\title{PS图层混合模式完全解读-讲义}
+\subtitle{超详细的图层混合模式解读}
+
+\author{王先生的副业}
+\institute{王先生的副业}
+\date{2023年6月1日}
+\version{4.3}
+%\bioinfo{自定义}{信息}
+
+\extrainfo{转载请注明出处}
+
+\setcounter{tocdepth}{3}
+
+%\logo{logo-blue.png}
+%\cover{cover.jpg}
+
+% 本文档命令
+\usepackage{array}
+\newcommand{\ccr}[1]{\makecell{{\color{#1}\rule{1cm}{1cm}}}}
+
+ \definecolor{customcolor}{RGB}{32,178,170}
+ \colorlet{coverlinecolor}{customcolor}
+\begin{document}
+	\maketitle
+	\frontmatter
+	\tableofcontents
+	\mainmatter
+  \include{chapter/chapterZero.tex}
+  \end{document}
+

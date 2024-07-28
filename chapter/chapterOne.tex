@@ -1,0 +1,1604 @@
+
+\chapter{普通组}
+
+\subsection{ 正常Normal}
+
+正常模式是一切的基础，也是我们理解和掌握混合模式的基础，
+正常模式可以看作是基于RGB颜色空间，也可以看作是基于HSY色彩空间
+
+\subsubsection{ 公式(泡茶的方式，比如搅拌、静置)}
+
+对于像素维度公式
+$$Pix_r=Normal(Pix_b,Pix_a)=Pix_a$$
+正常模式通道维度初始公式
+$$r=Normal(b,a)=a$$
+
+\subsubsection{ 融合填充(放多少茶叶)}
+
+$$r=Fill(b,a)= fill\times a + (1fill)\times b$$
+
+\subsubsection{ 融合不透明度(太苦了，最后加点水)}
+$$r=Opacity(b,a)= op\times Fill(b,a) + (1fill)\times b$$
+
+对于整个像素
+$$(r_{rc},r_{gc},r_{bc})=Normal((b_{rc},b_{gc},b_{bc}),(a_{rc},a_{gc},a_{bc}))=(r_{rc},r_{gc},r_{bc})$$
+后面的混合模式我们不再讨论整个像素的公式，我们只讨论某个通道的结果。
+
+\subsubsection{ 整个像素融合填充}
+
+这里不同的混合模式公式不一定相同。
+$$\begin{aligned}(r_{rc},r_{gc},r_{bc})&=Fill((b_{rc},b_{gc},b_{bc}),(a_{rc},a_{gc},a_{bc}))\\&=\left((fill\times a_{rc} + (1fill)\times b_{rc}),(fill\times a_{gc} + (1fill)\times b_{gc}),(fill\times a_{bc} + (1fill)\times b_{bc})\right)\end{aligned}$$
+
+\subsubsection{ 整个像素融合不透明度}
+
+$$\begin{aligned}(r_{rc},r_{gc},r_{bc})&= Opacity((b_{rc},b_{gc},b_{bc}),(a_{rc},a_{gc},a_{bc}))\\&=\left((op\times Fill(a_{rc},b_{rc}) + (1fill)\times b_{rc}),(op\times Fill(a_{gc},b_{gc} + (1op)\times b_{gc}),(op\times Fill(a_{bc},b_{bc} + (1op)\times b_{bc})\right)\end{aligned}$$
+
+\subsubsection{ 映射面和相关拓展}
+
+![Image](https://pic4.zhimg.com/80/v2c5917f85c378077b01a517828a449a8d.png)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 正常模式
+	public static BlendColor Normal(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = colorBlend.red.get01Value() *fill + colorBase.red.get01Value()* (1  fill);
+		double green = colorBlend.green.get01Value() *fill + colorBase.green.get01Value()* (1  fill);
+		double blue = colorBlend.blue.get01Value() *fill + colorBase.blue.get01Value()* (1  fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red *255, green* 255, blue * 255), opacity);
+	}
+\end{lstlisting}
+借助正常模式，我们可以看到不透明度和填充的关系，后面的模式讨论我们都不再说明像素级别的公式，因为没有必要，我们只讨论通道级别的公式。我们设定$fill$为$40\%$，$Opacity$ 为$60\%$
+\begin{unionpayBoxRed}
+	基础图层                RGB[111.00,  80.00,  60.00]~ HSY[23.53,  51.00,  87.10 ]~ HSB[ 23.53,  45.95,  43.53]
+	混合图层                RGB[ 80.00,  70.00, 156.00]~ HSY[246.98,  86.00,  82.46]~ HSB[246.98,  55.13,  61.18]
+	========================正常组===================================
+	正    常(Normal)        RGB[103.56,  77.60,  83.04]~ HSY[347.43,  25.96,  85.99]~ HSB[347.43,  25.07,  40.61]
+	
+\end{unionpayBoxRed}
+
+我们在PS中使用这两种颜色进行验证，发现符合我们的算法。
+![Image](https://pic4.zhimg.com/80/v23659d729a688982832ac2bdbddb0afb0.png)
+
+\subsubsection{ 用途示例}
+
+该模式是默认模式，在不调节填充和不透明度的情况下，就是上方像素点覆盖下方的像素点。
+结合不透明度或者填充，可以实现和下方图层的简单混色。
+
+\subsection{ 溶解Dissolve}
+
+\subsubsection{ 溶解模式初始公式}
+
+$$r=Dissolve(b,a)=a$$
+
+\subsubsection{ 如果融合了填充}
+
+$$r=Fill(b,a)= Random_{fill}(Dissolve(b,a),b)$$
+不透明度对溶解模式是无效的。
+\textbf{$fill$的值越大，则下层像素暴露的可能性越小}
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 溶解模式
+	public static BlendColor Dissovle(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double rand = Math.random(); // 产生随机数
+		if (rand < fill) {
+			return colorBlend;
+		} else {
+			return colorBase;
+		}
+	}
+\end{lstlisting}
+
+溶    解(Dissolve)      RGB[111.00,  80.00,  60.00]~ HSY[23.53,  51.00,  87.10 ]~ HSB[ 23.53,  45.95,  43.53]
+
+\subsubsection{ 验证}
+溶解模式是根据概率来实现决定显示下方像素还是上方像素,于是取样点不同，则结果可以是上方的像素也可以是下方的像素
+![Image](https://pic4.zhimg.com/80/v2646e9efd49d7d7cf392a0c50172f033a.png)
+
+\subsubsection{ 用途示例}
+
+可以通过该模式实现一下粒子效果
+
+\chapter{变暗组}
+
+这一组是基于RGB色彩空间，RGB三个通道的数值取值范围是$[0,255]$，归一化之后取值范围是$[0,1]$。这一组就是利用一系列运算让基础图层的三个通道的数值或者他们的和小于等于原值。这也是变暗组的本质。
+和下面的变亮组一样，变暗组有两种方式将通道值或者通道值的和变小，那就是替换和运算，替换包括变暗和深色，运算包括其他三种。
+
+\subsection{ 变暗模式}
+
+如果将基础图层每个像素每个通道的数值都变小，最简单的方式就是选择原图图层像素通道值和混合图层像素通道值中比较小的那个作为结果图层像素通道值，这样的图层中每个像素点的通道值都小于等于原值，图像自然就会变暗。
+
+\subsubsection{ 公式}
+
+$$r=Darken(b,a)=Min(b,a)$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =fill\times Darken(b,a)+(1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1fill)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v255aa2ee62075259c3289471adcb88ec1.jpg)
+
+\subsubsection{ 同图曲线表达式}
+
+$$r=Darken(b,b)=b$$
+这里我们简单认为fill和opacity都是100，因为我们日常使用中几乎用不到改变这两个值并且需要模拟同图曲线的情况，使用这里只讨论最简单的类型。但是其他类型可以通过我们提供的公式自行推导，但是这里没有必要写出来。下同。
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 变暗
+	public static BlendColor Darken(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = DarkenChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = DarkenChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = DarkenChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red *255, green* 255, blue * 255), opacity);
+	}
+	
+	private static double DarkenChannel(double base, double blend, double fill) {
+		return Math.min(base, blend) * fill + (1  fill) * base;
+	}
+\end{lstlisting}
+
+
+
+变    暗(Darken)        RGB[103.56,  77.60,  60.00]~ HSY[24.24,  43.56,  83.45 ]~ HSB[ 24.24,  42.06,  40.61]
+
+
+\subsubsection{ 验证}
+![Image](https://pic4.zhimg.com/80/v206553d0186cfe62bc9a64e12dfa91aec.png)
+
+\subsubsection{ 用途示例}
+
+1:组合成为对比度组的点光Pinlight模式
+2:此处是深色模式的简化版本，但是我们还是可以通过它来实现一些溶图操作
+
+\subsection{ 正片叠底Multiply}
+
+如果将混合图层像素的通道数值和原图像素通道数值相乘，则因为归一化之后的数值都是小于等于1的所以，原值乘一个小于1的数值一定小于等于原来的值。所以图像会变暗。
+
+\subsubsection{ 公式}
+
+$$r=Multiply(b,a)=b\times a$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =fill\times Multiply(b,a\times fill)+(1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+正片叠底的映射面，同图面，同图曲线和中性灰平面
+![Image](https://pic4.zhimg.com/80/v2a132313d73bba653a98b20ee3b6595e8.jpg)
+
+\subsubsection{ 同图曲线表达式}
+
+$$r=Multiply(b,b)= b^2$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 正片叠底
+	public static BlendColor Mulitply(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = MulitplyChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = MulitplyChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = MulitplyChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double MulitplyChannel(double base, double blend, double fill) {
+		return ColorUtils.round((base * blend) * fill + (1  fill) * (base), 1, 0);
+	}
+\end{lstlisting}
+
+
+
+正片叠底(Mulitply)      RGB[ 92.72,  66.07,  54.41]~ HSY[18.26,  38.31,  72.78 ]~ HSB[ 18.26,  41.32,  36.36]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2e8d928c1068e089c9f64499c8df173f2.png)
+
+\subsubsection{ 用途示例}
+
+1:和滤色模式组合成强光和叠加模式
+2:给比较亮的图片添加纹理
+3:扣除白色背景
+
+\subsection{ 线性加深LinearBurn}
+
+此模式本质是减法，就是使用混合图层像素通道数值的补也就是附片和原图相减，如果大于1则取1小于0则取0，并且此模式需要对填充特殊处理。线性加深可以通过划分和颜色加深转化。
+
+\subsubsection{ 公式}
+
+$$r=LinearBurn(b,a)=b(1a)=b+a1$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =b(1a)\times fill$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+线性加深的映射面，同图面，同图曲线和中性灰平面
+![Image](https://pic4.zhimg.com/80/v2a1bcf5520bda69cffb4a48603cc36e0e.jpg)
+
+\subsubsection{ 同图曲线表达式}
+
+$$ r=LinearBrun(b,b)=2\times b1$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 线性加深
+	public static BlendColor LinearBurn(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = LinearBurnChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = LinearBurnChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = LinearBurnChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red *255, green* 255, blue * 255), opacity);
+	}
+	
+	private static double LinearBurnChannel(double base, double blend, double fill) {
+		return ColorUtils.round(base  (1  blend) * fill, 1, 0);
+	}
+\end{lstlisting}
+
+
+
+
+线性加深(LinearBurn)    RGB[ 69.00,  35.60,  36.24]~ HSY[358.85,  33.40,  45.69]~ HSB[358.85,  48.41,  27.06]
+
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v20080365a33ed15e17fd91c8e97064c0e.png)
+
+\subsubsection{ 用途示例}
+
+1:组成线性光
+2:添加光效可做滤镜
+
+\subsection{ 颜色加深ColorBurn}
+
+此模式的本质是线性加深和混合图层相除，由此可以得知他可以和线性加深通过正片叠底转化。
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}&r=ColorBurn(b,a)\\&=1\dfrac{1b}{1(1a)}\end{aligned}$$
+这里之所以这么写，是因为后面要加入fill，也就是填充。
+
+
+推导一下
+$$\begin{aligned}&r=ColorBurn(b,a)\\&=1\dfrac{1b}{1(1a)}=\dfrac{1(1a)(1b)}{1(1a)}\\&\\&=\dfrac{b(1a)}{1(1a)}\\&\\&=\dfrac{LinearBurn(b,a)}{1(1a)}=\dfrac{LinearBurn(b,a)}{a}\end{aligned}$$
+从这里可以看出，线性加深可以和颜色加深相互转换，通过划分和正片叠底。但是这里涉及到其他的混合模式，而非单纯负片，所以不把他们放到可以互相转化的分类中
+
+
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =1\dfrac{1b}{1(1a)\times fill}$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+颜色加深的映射面，同图面，同图曲线和中性灰平面
+![Image](https://pic4.zhimg.com/80/v2d00434c3f250a7ca8a731eb8aea512f9.jpg)
+
+\subsubsection{ 同图曲线表达式}
+
+$$ r= ColorBurn(b,b)=2\dfrac{1}{b}$$
+
+\subsubsection{ 两次负片转划分}
+
+$$\begin{aligned}&r=1ColorBurn(1b,a)\\&=1(1\dfrac{1(1b)}{a})\\&=\dfrac{b}{a}\end{aligned}$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+\begin{lstlisting}
+	// 颜色加深
+	public static BlendColor ColorBurn(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = ColorBurnChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = ColorBurnChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = ColorBurnChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double ColorBurnChannel(double base, double blend, double fill) {
+		return ColorUtils.round(1  Math.min(1, (1  base) / ((1  (1  blend) * fill))), 1, 0);
+	}
+\end{lstlisting}
+
+
+颜色加深(ColorBurn)     RGB[ 78.31,  37.07,  38.49]~ HSY[357.94,  41.24,  49.60]~ HSB[357.94,  52.66,  30.71]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2049b19da9657d84ea8a601b9c99bd200.png)
+
+\subsubsection{ 用途示例}
+
+1:组合成为亮光模式
+2:完成特殊光影效果，例如给太阳添加一些颜色或光晕，并且保留亮部细节,该模式的特点也是相对线性加深，可以保留底图的亮部细节。
+
+\subsection{ 深色Darker}
+
+深色模式可以理解为变暗模式的加强变暗模式，或者是粗略的变暗模式，因为其不产生新的像素，就像溶解模式一样。
+计算细节简单来说就是求和，比较大小，小的留下了，\text{若}求和的结果一样，就计算明度，明度小的留下了。
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}
+	Pix_r &=Darker(Pix_b,Pix_a)\\&=\left\{\begin{aligned}&Pix_a && Sum(Pix_a)<Sum(Pix_b)\\&Pix_b&&  Sum(Pix_a)>Sum(Pix_b)\\&Pix_b&&  Sum(Pix_a)=Sum(Pix_b)且Lum(Pix_b)<Lum(Pix_a)\\&Pix_a&&  Sum(Pix_a)=Sum(Pix_b)且Lum(Pix_b)>Lum(Pix_a)\end{aligned}\right.
+\end{aligned}$$
+$$Lum(Pix) = 0.3RC+0.59GC+0.11BC$$
+$$Sum(Pix) = RC+GC+BC$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(Pix_b,Pix_a\times fill) =fill\times Pix_r + Pix_b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(Pix_b,Pix_a)=op\times Fill(Pix_b,Pix_a)+(1op)\times Pix_b $$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+$$Pix_r=Pix_b$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 深色
+	public static BlendColor Darker(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double sumBase = colorBase.red.value + colorBase.green.value + colorBase.blue.value;
+		double sumBlend = (colorBlend.red.value + colorBlend.green.value + colorBlend.blue.value) * fill;
+		if (sumBase == sumBlend) {
+			if (colorBase.getLum() < colorBlend.getLum()) {
+				double red = colorBase.red.get01Value();
+				double green = colorBase.green.get01Value();
+				double blue = colorBase.blue.get01Value();
+				return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+			} else {
+				double red = colorBase.red.get01Value() * (1  fill) + colorBlend.red.get01Value() * fill;
+				double green = colorBase.green.get01Value() * (1  fill) + colorBlend.green.get01Value() * fill;
+				double blue = colorBase.blue.get01Value() * (1  fill) + colorBlend.blue.get01Value() * fill;
+				return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+			}
+		}
+		if (sumBase < sumBlend) {
+			double red = colorBase.red.get01Value();
+			double green = colorBase.green.get01Value();
+			double blue = colorBase.blue.get01Value();
+			return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+		}
+		double red = colorBase.red.get01Value() * (1  fill) + colorBlend.red.get01Value() * fill;
+		double green = colorBase.green.get01Value() * (1  fill) + colorBlend.green.get01Value() * fill;
+		double blue = colorBase.blue.get01Value() * (1  fill) + colorBlend.blue.get01Value() * fill;
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+		
+	}
+\end{lstlisting}
+
+
+
+深    色(Darker)        RGB[103.56,  77.60,  83.04]~ HSY[347.43,  25.96,  85.99]~ HSB[347.43,  25.07,  40.61]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2f8ce71ffb73afe7954f58a9ea68afaa2.png)
+
+\subsubsection{ 用途示例}
+
+用于替换图中某些像素点，一般用于两张十分相似的图片的融合，比如连拍，延时摄影的一组照片融合成一张图。
+
+# 变亮组
+
+变亮组是变暗组的相反模式，并且都可以通过负片操作来实现相互转换
+变亮组的本质就是以混合图层的像素为参数，对原图层像素的数值进行增大，数值增大了，图片就变亮了。如果混合图层中像素点的通道值时0，则此时该通道的计算结果和原图一致。
+
+\subsection{ 变亮Lighten}
+
+变亮模式和变暗模式相反，变暗时取最小值，变亮就是取最大值，具体做法就是取原图层和混合图层像素点中三个通道各自的最大值，保留最大值组成的像素作为结果像素。
+
+\subsubsection{ 公式}
+
+$$r=Lighten(b,a)=Max(b,a)$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =fill\times Lighten(b,a\times fill)+(1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1fill)\times b$$
+可以写作
+
+\subsubsection{ 三次负片操作相互转换}
+
+$$\begin{aligned}
+	r&=Lighten(b,a)\\&=1Min(1b,1a)\\&= 1Darken(1b,1a)
+\end{aligned}$$
+也就是说，三次负片操作可以实现变暗模式和变亮模式的相互转换
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v2d521268da52ed456c348654dc38eb334.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 变亮模式
+	public static BlendColor Lighten(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = LightenChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = LightenChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = LightenChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double LightenChannel(double base, double blend, double fill) {
+		return Math.max(base, blend * fill) * fill + (1  fill) * base;
+	}
+	
+\end{lstlisting}
+
+
+变    亮(Lighten)       RGB[111.00,  80.00,  83.04]~ HSY[354.12,  31.00,  89.63]~ HSB[354.12,  27.93,  43.53
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v22047ccfc835a7e7d8e45252fe8d2cb11.png)
+
+\subsubsection{ 用途示例}
+
+1:组成叠加和强光
+2:保留通道中较大的值，并且组成新的像素，可用于将背景较暗或相似但是部分不相同的图片融合。相当于做了一个复杂的通道蒙版，并且这个蒙版非常精确，精确到通道。
+
+\subsection{ 滤色Screen}
+
+滤色时正片叠底的一种负片组合，和变暗变亮一样可以通过三次负片操作相互转换。
+
+\subsubsection{ 公式}
+
+$$r=Screen(b,a)=1(1b)(1a)$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =fill\times Screen(b,a)+(1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1fill)\times b$$
+
+\subsubsection{ 三次负片操作相互转换}
+
+$$\begin{aligned}
+	r&=Screen(b,a)\\&=1(1b)(1a)\\&= 1 Multipy(1b,1a)
+\end{aligned}$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v21860b2ad2b80db71dbedcbca9f8fc118.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 滤色
+	public static BlendColor Screen(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = ScreenChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = ScreenChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = ScreenChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double ScreenChannel(double base, double blend, double fill) {
+		return (1  (1  base) * (1  blend)) * fill + (1  fill) * base;
+	}
+\end{lstlisting}
+
+
+滤    色(Screen)        RGB[121.84,  91.53,  88.63]~ HSY[5.24,  33.21, 100.30  ]~ HSB[  5.24,  27.26,  47.78]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v259751bd2320f2c8a7531d8f3f0e2c2d9.png)
+
+\subsubsection{ 用途示例}
+
+1:组成叠加模式和强光模式
+2:扣除黑色背景
+
+\subsection{ 线性减淡LinearDodge}
+
+线性减淡就是让原图和混合图层做加法
+他和线性加深也是可以互相转化的
+
+\subsubsection{ 公式}
+
+$$r=LinearDodge(b,a)=b+a$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =b+a\times fill $$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1fill)\times b$$
+
+\subsubsection{ 三次负片操作相互转换}
+$$\begin{aligned}
+	r&=LinearDodge(b,a)\\&= 1LinearBurn(1b,1a)\\& = 1(1b+1a1)=b+a
+\end{aligned}$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v2b4fc407710556b0c82ed2e0453be35e1.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 线性减淡
+	public static BlendColor LinearDodge(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		
+		double red = LinearDodgeChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = LinearDodgeChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = LinearDodgeChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double LinearDodgeChannel(double base, double blend, double fill) {
+		return ColorUtils.round(base + blend * fill, 1, 0);
+	}
+	
+\end{lstlisting}
+
+
+
+线性减淡(LinearDodge)   RGB[130.20,  96.80,  97.44]~ HSY[358.85,  33.40, 106.89]~ HSB[358.85,  25.65,  51.06]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v26570770832bcb00603f42b6e4e615f06.png)
+
+\subsubsection{ 用途示例}
+
+1：组成线性光
+2: 制作特殊光效
+
+\subsection{ 颜色减淡ColorDodge}
+
+颜色减淡可以由颜色加深通过三次负片转化，颜色减淡也可以转化为划分，通过一次负片可以实现
+
+\subsubsection{ 公式}
+
+$$r=ColorDodge(b,a)=\dfrac{b}{1a}$$
+
+\subsubsection{ 融合填充}
+
+$$r= Fill(b,a) =\dfrac{b}{1a\times fill} $$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1fill)\times b$$
+
+\subsubsection{ 三次负片操作相互转换}
+
+$$\begin{aligned}
+	r&=ColorDodge(b,a)\\&\\&= 1ColorBurn(1b,1a)\\&\\& =1(1\dfrac{1(1b)}{1(1(1a))})\\&=\dfrac{b}{1a}
+\end{aligned}$$
+
+\subsubsection{ 一次负片转为划分}
+
+$$\begin{aligned}
+	r&=ColorDodge(b,1a)\\\\&= \dfrac{b}{11+a}\\\\&=\dfrac{b}{a}
+\end{aligned}$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v22357efe9c1f683dc33677a5ef1397e7d.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 颜色减淡
+	public static BlendColor ColorDodge(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = ColorDodgeChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = ColorDodgeChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = ColorDodgeChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double ColorDodgeChannel(double base, double blend, double fill) {
+		return ColorUtils.round((base) / ((1  blend * fill)), 1, 0);
+	}
+	
+\end{lstlisting}
+
+
+
+颜色减淡(ColorDodge)    RGB[120.56,  85.92,  71.66]~ HSY[17.50,  48.89,  94.74 ]~ HSB[ 17.50,  40.56,  47.28]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v20185c9683291879fa645a2f0f2038b7f.png)
+
+\subsubsection{ 用途示例}
+
+1:组合成为亮光模式
+2:制造光线,同时保护暗部细节
+
+\subsection{ 浅色Lighter}
+
+浅色模式是深色模式的相反模式，可以通过深色三次负片操作得到
+计算细节简单来说就是求和，比较大小，大的留下了，\text{若}求和的结果一样，就计算明度，明度大的留下了。
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}
+	Pix_r &=Lighter(Pix_b,Pix_a)\\&=\left\{\begin{aligned}&Pix_a && Sum(Pix_a)>Sum(Pix_b)\\&Pix_b&&  Sum(Pix_a)<Sum(Pix_b)\\&Pix_b&&  Sum(Pix_a)=Sum(Pix_b)且Lum(Pix_b)>Lum(Pix_a)\\&Pix_a&&  Sum(Pix_a)=Sum(Pix_b)且Lum(Pix_b)<Lum(Pix_a)\end{aligned}\right.
+\end{aligned}$$
+$$Lum(Pix) = 0.3RC+0.59GC+0.11BC$$
+$$Sum(Pix) = RC+GC+BC$$
+
+\subsubsection{ 融合填充}
+
+$$r=Fill(Pix_b,Pix_a\times fill) =fill\times Pix_r+ Pix_b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(Pix_b,Pix_a)=op\times Fill(Pix_b,Pix_a)+(1op)\times Pix_b $$
+
+\subsubsection{ 三次负片操作相互转换}
+
+$$\begin{aligned}Pix_r& =Lighter(Pix_b,Pix_a)\\\\&=\left\{\begin{aligned}&Pix_b &&当 a_{rc}+a_{gc}+a_{bc}<b_{rc}+b_{gc}+b_{bc}\\&Pix_a&&当a_{rc}+a_{gc}+a_{bc}>b_{rc}+b_{gc}+b_{bc}\end{aligned}\right.\\\\&=1Darker(1Pix_b,1Pix_a)\\\\&=\left\{\begin{aligned}&1(1Pix_b) &&当 1a_{rc}+1a_{gc}+1a_{bc}>1b_{rc}+1b_{gc}+1b_{bc}\\&1(1Pix_a)&& 当 1a_{rc}+1a_{gc}+1a_{bc}<b_{rc}+1b_{gc}+1b_{bc}\end{aligned}\right. \\\\&=\left\{\begin{aligned}&Pix_b&&当 a_{rc}+a_{gc}+a_{bc}<b_{rc}+b_{gc}+b_{bc}\\&Pix_a&& 当 a_{rc}+a_{gc}+a_{bc}>b_{rc}+b_{gc}+b_{bc}\end{aligned}\right.\end{aligned}$$
+相等的情况同理可得
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 浅色
+	public static BlendColor Lighter(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double sumBase = colorBase.red.value + colorBase.green.value + colorBase.blue.value;
+		double sumBlend = (colorBlend.red.value + colorBlend.green.value + colorBlend.blue.value);
+		if (sumBase == sumBlend) {
+			if (colorBase.getLum() > colorBlend.getLum()) {
+				double red = colorBase.red.get01Value();
+				double green = colorBase.green.get01Value();
+				double blue = colorBase.blue.get01Value();
+				return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+			} else {
+				double red = colorBase.red.get01Value() * (1  fill) + colorBlend.red.get01Value() * fill;
+				double green = colorBase.green.get01Value() * (1  fill) + colorBlend.green.get01Value() * fill;
+				double blue = colorBase.blue.get01Value() * (1  fill) + colorBlend.blue.get01Value() * fill;
+				return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+			}
+		}
+		if (sumBase > sumBlend) {
+			double red = colorBase.red.get01Value();
+			double green = colorBase.green.get01Value();
+			double blue = colorBase.blue.get01Value();
+			return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+		}
+		double red = colorBase.red.get01Value() * (1  fill) + colorBlend.red.get01Value() * fill;
+		double green = colorBase.green.get01Value() * (1  fill) + colorBlend.green.get01Value() * fill;
+		double blue = colorBase.blue.get01Value() * (1  fill) + colorBlend.blue.get01Value() * fill;
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+		
+	}
+\end{lstlisting}
+
+
+
+
+
+浅    色(Lighter)       RGB[111.00,  80.00,  60.00]~ HSY[23.53,  51.00,  87.10 ]~ HSB[ 23.53,  45.95,  43.53]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2ce9e8ea0db2849236e47fdd608ed7e90.png)
+
+\subsubsection{ 用途示例}
+
+保留像素中通道和较大的像素，可用于将背景较暗或相似但是部分不相同的图片融合。相当于做了一个复杂的通道蒙版，并且这个蒙版非常精确，精确到像素。
+对比度组
+对比度组都是上述两组某两项的组合，组合的分割界限是基础图层或者混合图层中性灰平面，并且他们之间也有一些关系。
+
+# 对比度组
+
+\subsection{ 叠加Overlay}
+
+此模式是正片叠底和滤色的组合，组合依据是底图的中性灰平面，如果在$[0,128]$则使用正片叠底，\text{若}是在$(128,255]$之间，则是实用滤色。
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}r&=OverLay(b,a)\\\\&=\left\{\begin{aligned}Multiply(2b,a)&&当 0\leq b \leq 0.5\\Screen(2(b0.5),a)&&当 0.5< b \leq 1\\\end{aligned}\right.\\\\&=\left\{\begin{aligned}2ba&&当 0\leq b \leq 0.5\\12(1b)(1a)&&当 0.5< b \leq 1\\\end{aligned}\right.\end{aligned}$$
+
+和填充还有不透明度的关系，以及公式可以参考正片叠底和滤色
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v26fcfffa15b4fb6325517077adce6523c.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 叠加
+	public static BlendColor Overlay(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = OverlayChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = OverlayChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = OverlayChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red *255, green* 255, blue * 255), opacity);
+	}
+	
+	private static double OverlayChannel(double baseValue, double blendValue, double fill) {
+		if (baseValue <= 0.5) {
+			return MulitplyChannel(baseValue, 2 * blendValue, fill);
+		} else {
+			return ScreenChannel(baseValue, 2 * (blendValue  0.5), fill);
+		}
+	}
+\end{lstlisting}
+
+
+
+叠    加(Overlay)       RGB[101.08,  71.34,  63.22]~ HSY[12.87,  37.86,  79.37 ]~ HSB[ 12.87,  37.45,  39.64]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v24e38886b5928cdabd526c5199c6b79bb.png)
+
+\subsubsection{ 用途示例}
+
+1:同图混合增加图片对比度
+2:和中性灰混合，达到局部提亮或者压黑
+
+\subsection{ 柔光SoftLight}
+
+柔光模式是最复杂的一种混合模式，也是最巧妙的一种混合模式，柔光模式的本质是伽马矫正(gama correction)。配合混合图层的像素点的通道数值，再对原图层使用伽马矫正，二者通过配合就可以得到柔光模式。
+
+如果我们想了解柔光模式，首先必须了解什么是伽马矫正，伽马矫正，简单来说就是，将原像素通道数值通过幂次方的方式进行修改，比如平方和根号，例如我们由一个归一化之后为0.5的通道数值，我们对其进行系数为2的伽马矫正，则结果是$0.5^{\dfrac{1}{2}}=\sqrt{0.5}$,如果进行系数为$\dfrac{1}{2}$的伽马矫正，则结果为$0.5^2$
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}r&= SoftLight(b,a)\\\\&=\left\{\begin{aligned}&(2a1)(b^2b)+b&a\leq0.5\\&(2a1)(\sqrt{b}b)+b&a>0.5\end{aligned}\right.\end{aligned}$$
+
+伽马矫正的数学表达式$$output = input^{\dfrac{1}{gama}}$$
+
+其中$input$代表输入信号，$output$代表输出，$gama$代表伽马系数
+
+系数为$2$的伽马矫正
+
+$$output= input^{\dfrac{1}{2}}$$
+
+系数为$\dfrac{1}{2}$的伽马矫正
+
+$$output= input^{2}$$
+
+![Image](https://pic4.zhimg.com/80/v25883b4328464f28318be6e1601ca2452.jpg)
+
+于是对于系数为$\dfrac{1}{2}$的伽马矫正，稍微变换一下表达式
+
+$$r =b^2= (bb^2) +b$$
+
+然后再使用$(2a1)$作为系数乘以差值项
+
+$$r = (2a1)(bb^2) +b$$
+
+![Image](https://pic4.zhimg.com/80/v29a0ac20c1195890ae269ae59a5a94c47.jpg)
+
+于是对于系数为$2$的伽马矫正，稍微变换一下表达式
+
+$$r =\sqrt{b}= (\sqrt{b}b) +b$$
+
+然后再使用$(2a1)$作为系数乘以差值项
+
+$$r =(2a1)(\sqrt{b}b) +b$$
+
+再将结果合并，我们就可以得到柔光模式的表达式。
+
+如果使用一句话概括柔光模式的数学表达式，就是“以混合图层为系数的系数为$\dfrac{1}{2}$和$2$的伽马矫正”
+
+在 PS中伽马矫正可以在色阶工具和曝光度工具中找到👀
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v207b96372a38bce7f9cb1312ffef9f6d2.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 柔光
+	public static BlendColor SoftLight(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = SoftLightChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = SoftLightChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = SoftLightChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double SoftLightChannel(double baseValue, double blendValue, double fill) {
+		if (blendValue <= 0.5) {
+			return (baseValue + (2 * blendValue  1) * (baseValue  baseValue * baseValue)) * fill
+			+ (1  fill) * baseValue;
+		} else {
+			return (baseValue + (2 * blendValue  1) * (SoftLightChannelsub(baseValue)  baseValue)) * fill
+			+ (1  fill) * baseValue;
+		}
+	}
+	
+	private static double SoftLightChannelsub(double value) {
+		if (value <= 0.25) {
+			return ((16 * value  12) * value + 4) * value;
+		} else {
+			return Math.sqrt(value);
+		}
+	}
+\end{lstlisting}
+
+
+
+柔    光(SoftLight)     RGB[105.40,  74.06,  63.42]~ HSY[15.21,  41.98,  82.29 ]~ HSB[ 15.21,  39.83,  41.33]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v289c8d49b8123a259c70588385be98d53.png)
+
+\subsubsection{ 用途示例}
+
+1:同图混合增加图片对比度
+2:配合中性灰平面，实现局部提亮和压暗（dodge and burn）
+
+\subsection{ 强光HardLight}
+
+此模式也是正片叠底和滤色的组合，组合的分割界限是混合图层中性灰平面，并且它和叠加模式是互逆的关系，也就是说，如果在强光模式下把基础图层和混合图层顺序调换，可以的到原顺序下叠加模式的效果
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}r&= HardLight(b,a)\\\\&=\left\{\begin{aligned}Multiply(b,2a)&&当 0\leq a \leq 0.5\\Screen(b,2(a0.5))&&当 0.5< a \leq 1\\\end{aligned}\right.\\\\&=\left\{\begin{aligned}2ba&&当 0\leq a \leq 0.5\\12(1b)(1a)&&当 0.5< a \leq 1\\\end{aligned}\right.\end{aligned}$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v29cc2a1d44303de5205f8517cba9d8e4e.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+\begin{lstlisting}
+	// 强光
+	public static BlendColor HardLight(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = HardLightChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = HardLightChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = HardLightChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double HardLightChannel(double baseValue, double blendValue, double fill) {
+		if (blendValue <= 0.5) {
+			return MulitplyChannel(baseValue, 2 * blendValue, fill);
+		} else {
+			
+			return ScreenChannel(baseValue, 2 * (blendValue  0.5), fill);
+		}
+	}
+\end{lstlisting}
+
+
+强    光(HardLight)     RGB[101.08,  71.34,  70.46]~ HSY[1.72,  30.61,  80.16  ]~ HSB[  1.72,  30.29,  39.64]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2d24bb5bbed26a0091b1e6f23b54cc37a.png)
+
+\subsubsection{ 用途示例}
+
+1:同图混合增加图片对比度
+2:配合中性灰平面，实现dodge and burn.
+
+\subsection{ 线性光LinearLight}
+
+线性光是线性减淡和线性加深的结合，组合的分割界限是混合图层中性灰平面，具体公式如下
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}r&= LinearLight(b,a)\\\\&=\left\{\begin{aligned}LinearBurn(b,2a)&&当 0\leq a \leq 0.5\\LinearDodge(b,2(a0.5))&&当 0.5< a \leq 1\\\end{aligned}\right.\\\\&=\left\{\begin{aligned}b+(2a)1&&当 0\leq a \leq 0.5\\b+2(a0.5)&&当 0.5< a \leq 1\\\end{aligned}\right.=b+2a1\end{aligned}$$
+
+\subsubsection{ 和填充结合}
+
+$$\begin{aligned}r&= Fill(b,a)\\\\&=\left\{\begin{aligned}LinearBurn(b,2a\times fill)&&当 0\leq a \leq 0.5\\LinearDodge(b,2(a0.5)\times fill)&&当 0.5< a \leq 1\\\end{aligned}\right.\\\\&=\left\{\begin{aligned}b+(2a)\times fill1&&当 0\leq a \leq 0.5\\b+2(a0.5)\times fill&&当 0.5< a \leq 1\\\end{aligned}\right.\\\\&=\left\{\begin{aligned}b+2a\times fill1&&当 0\leq a \leq 0.5\\b+2a\times fill0.5\times fill&&当 0.5< a \leq 1\\\end{aligned}\right.\end{aligned}$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v29c9415ce94712c10c136443e64737d87.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	public static BlendColor LinearLight(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = LinearLightChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = LinearLightChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = LinearLightChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double LinearLightChannel(double baseValue, double blendValue, double fill) {
+		if (blendValue <= 0.5) {
+			return LinearBurnChannel(baseValue, 2 * blendValue, fill);
+		} else {
+			return LinearDodgeChannel(baseValue, 2 * (blendValue  0.5), fill);
+		}
+	}
+\end{lstlisting}
+
+
+线 性 光(LinearLight)   RGB[ 88.20,  52.40,  73.68]~ HSY[324.34,  35.80,  65.48]~ HSB[324.34,  40.59,  34.59]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2cc782f5e3ea6bf7b994ed4c2bcf62668.png)
+
+\subsubsection{ 用途示例}
+
+1:组成中性灰磨皮
+
+\subsection{ 点光PinLight}
+
+点光是变暗模式和变亮模式的组合
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}r=PinLight(b,a)&=\left\{ \begin{aligned}&Darken(b,2a)&a\leq 0.5\\&Lighten(b,2(a0.5))&a> 0.5  \end{aligned}\right.\\&\\&=\left\{ \begin{aligned}&Min(b,2a)&a\leq 0.5\\&Max(b,2(a0.5))&a> 0.5  \end{aligned}\right.\end{aligned}$$
+
+\subsubsection{ 和填充结合}
+
+$$\begin{aligned}r= Fill(b,a)&=\left\{ \begin{aligned}&Min(b,2a\times fill)&a\leq 0.5\\&Max(b,2(a0.5)\times fill)&a> 0.5  \end{aligned}\right.&\end{aligned}$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v235393c61d59e6b364377a0593665ef9d.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 点光
+	public static BlendColor PinLight(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = PinLightChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = PinLightChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = PinLightChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double PinLightChannel(double baseValue, double blendValue, double fill) {
+		if (blendValue <= 0.5) {
+			return DarkenChannel(baseValue, 2 * blendValue, fill);
+		} else {
+			return LightenChannel(baseValue, 2 * (blendValue  0.5), fill);
+		}
+	}
+\end{lstlisting}
+
+
+
+点    光(PinLight)      RGB[111.00,  80.00,  60.00]~ HSY[23.53,  51.00,  87.10 ]~ HSB[ 23.53,  45.95,  43.53]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v26112e55e876749493cb266b93438167f.png)
+
+\subsubsection{ 用途示例}
+
+1:增加图片对比度
+
+\subsection{ 亮光VividLight}
+
+亮光模式是颜色加深和颜色减淡的组合
+
+\subsubsection{ 公式}
+
+$$\begin{aligned}r=VividLight(b,a)&=\left\{ \begin{aligned}&ColorBurn(b,2a)&a\leq 0.5\\&ColorDodge(b,2(a0.5))&a> 0.5 \end{aligned}\right.\\&\\&=\left\{ \begin{aligned}&1\frac{(1b)}{2a}&a\leq 0.5\\&\frac{b}{12(a0.5)}&a>0.5\end{aligned}\right.\end{aligned}$$
+
+\subsubsection{ 加上fill}
+
+$$\begin{aligned}r=FIll(b,a)&=\left\{ \begin{aligned}&ColorBurn(b,2a\times fill)&a\leq 0.5\\&ColorDodge(b,2(a0.5)\times fill)&a> 0.5 \end{aligned}\right.\\&\\&=\left\{ \begin{aligned}&1\frac{(1b)}{2a\times fill}&a\leq 0.5\\&\frac{b}{12(a0.5)\times fill}&a>0.5\end{aligned}\right.\end{aligned}$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v2e1bc524e145afffb7229a720248729cb.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+\begin{lstlisting}
+	// 亮光
+	public static BlendColor VividLight(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = VividLightChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = VividLightChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = VividLightChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double VividLightChannel(double baseValue, double blendValue, double fill) {
+		if (blendValue <= 0.5) {
+			return ColorBurnChannel(baseValue, 2 * blendValue, fill);
+		} else {
+			return ColorDodgeChannel(baseValue, 2 * (blendValue  0.5), fill);
+		}
+	}
+\end{lstlisting}
+
+
+
+亮    光(VividLight)    RGB[ 95.87,  56.89,  63.53]~ HSY[349.77,  38.98,  69.31]~ HSB[349.77,  40.66,  37.60]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2c67630bb5337d019b0a953e5d0639b29.png)
+
+\subsubsection{ 用途示例}
+
+1:同图混合增加图片对比度
+2:通道抠图法，去除白边
+
+\subsection{ 实色混合HardMix}
+
+实色混合是一种极端的混合方式，但是如果它合填充结合，则它会产生一些意想不到的效果，并且我们还能找到它合线性光的关系
+
+\subsubsection{ 公式}
+$$r=HardMix(b,a)=\left\{ \begin{aligned}&1&b+a\geq 1\\&0&else  \end{aligned}\right.$$
+由公式我们可以看出，最后的结果只有两个，所以最后之后保留$2^3=8$种颜色，也就是
+$$\begin{aligned}(0,0,0)&黑\\(1,0,0)&红\\(1,1,0)&黄\\(1,1,1)&白\\(0,1,0)&绿\\(0,1,1)&青\\(1,0,1)&品红\\(0,0,1)&蓝\end{aligned}$$
+\subsubsection{ 加上fill}
+但是如果填充介入表达式，则结果将合线性光类似
+$$r=HardMix_{fill}(b,a)=\left\{ \begin{aligned}&0&  \frac{fill\times a+bfill}{(1fill)}<0\\ &\\ &\frac{fill\times a+bfill}{(1fill)}&0\leq \frac{fill\times a+bfill}{(1fill)}\leq 1\\&\\ &1&  \frac{fill\times a+bfill}{(1fill)}>1 \end{aligned}\right.$$
+如果fill的取值是$0.5$则
+$$\begin{aligned}r=HardMix_{fill}(b,a)=&\left\{ \begin{aligned}&0&  \frac{0.5\times a+b0.5}{(10.5)}<0\\ &\\ &\frac{0.5\times a+b0.5}{(10.5)}&0\leq \frac{0.5\times a+b0.5}{(10.5)}\leq 1\\ &\\&1&  \frac{0.5\times a+b0.5}{(10.5)}>1  \end{aligned}\right.\\&\\&=\left\{ \begin{aligned}&0&  a+2b1<0\\ &\\ &a+2b1&0\leq a+2b1\leq 1\\&\\ &1&  a+2b1>1    \end{aligned}\right.\end{aligned}$$
+上面的结果就是线性光的表达式，也就是说此时二者等价,或者说是互逆，也就是说，实色混合其实是线性光的强化版本，可以实现线性光的功能而去变化更多。
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times HardMix_{fill}(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+由此我们可以看出，实色混合可以看作线性减淡和线性加深的组合，
+也可以看作是颜色减淡和颜色加深的组合，注意这里是可以看作，并不是真的。
+但是由我们刚才推导出当填充等于$50\%$的时候，他可以和线性光互逆，此时我们也可以得出结论，实色混合本质是一种特殊的线性减淡和线性加深的组合，并且线性光是实色混合的特殊形式。
+![Image](https://pic4.zhimg.com/80/v2d0acbc02eaaadfa7c7fcf8c9c197d3f1.jpg)
+线性减淡和线性加深组合方式（真的）
+![Image](https://pic4.zhimg.com/80/v207241caa2b1fb466a09e24c36b23f8a0.jpg)
+颜色减淡和颜色加深的组合方式（可以看作是这样）
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 实色混合
+	public static BlendColor HardMix(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = HardMixChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = HardMixChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = HardMixChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double HardMixChannel(double baseValue, double blendValue, double fill) {
+		if (fill == 1) {
+			if (baseValue + blendValue >= 0.5) {
+				return 1;
+			}
+			return 0;
+		}
+		return ColorUtils.round((fill * blendValue + baseValue  fill) / (1  fill), 1, 0);
+	}
+\end{lstlisting}
+
+
+
+实色混合(HardMix)       RGB[ 85.40,  38.00,  44.40]~ HSY[351.90,  47.40,  52.92]~ HSB[351.90,  55.50,  33.49]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2185c85a43b2f9ff34cd960b62f543620.png)
+
+\subsubsection{ 用途示例}
+
+1:同图混合增加图片对比度
+2:特殊光效，可以根据fill调节
+
+\section{差值组}
+
+\subsection{ 差值Difference}
+
+差值就是基础图层和混合图层好的差值的绝对值
+
+\subsubsection{ 公式}
+
+$$r=Difference(b,a)=|ba|$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(b,a)=|ba|\times fill + (1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v25bf4cc0e5bc1a2f8038ac146313abf88.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 差值
+	public static BlendColor Difference(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = DifferenceChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = DifferenceChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = DifferenceChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double DifferenceChannel(double baseValue, double blendValue, double fill) {
+		return ColorUtils.round(Math.abs(baseValue  blendValue * fill), 1, 0);
+	}
+\end{lstlisting}
+
+
+
+
+差    值(Difference)    RGB[ 91.80,  63.20,  25.44]~ HSY[34.14,  66.36,  67.63 ]~ HSB[ 34.14,  72.29,  36.00]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v243bad58b79b7e11b03c07912fe5e7b3f.png)
+
+\subsubsection{ 用途示例}
+
+1:对齐图片
+2:颜色矫正
+
+\subsection{ 排除Exclusion}
+
+\subsubsection{ 公式}
+
+$$r=Exclusion(b,a)=b+a2ba$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(b,a)=(b+a2ba)\times fill + (1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 如果在该模式下，混合图层是白色，黑色或者中性灰色}
+
+\textbf{ 白色}
+
+$$r=Exclusion(b,1)=b+12b\times 1=1b$$
+等于负片
+
+\textbf{ 黑色}
+
+$$r=Exclusion(b,0)=b+12b\times 0=b$$
+等于原图
+
+\textbf{ 中性灰}
+
+$$r=Exclusion(b,\dfrac{1}{2})=b+\dfrac{1}{2}2b\times \dfrac{1}{2}=\dfrac{1}{2}$$
+依然是中性灰
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v2ad57ac95767489f285d1b0e616a96cb7.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 排除
+	public static BlendColor Exclusion(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = ExclusionChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = ExclusionChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = ExclusionChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red *255, green* 255, blue * 255), opacity);
+	}
+	
+	private static double ExclusionChannel(double baseValue, double blendValue, double fill) {
+		return ColorUtils.round((baseValue + blendValue  2 * baseValue * blendValue) * fill + (1  fill) * baseValue,
+		1, 0);
+	}
+\end{lstlisting}
+
+
+
+排    除(Exclusion)     RGB[113.48,  86.26,  79.82]~ HSY[11.47,  33.66,  93.72 ]~ HSB[ 11.47,  29.66,  44.50]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v258f5618bc9fc0a23690320649d237ed8.png)
+
+\subsubsection{ 用途示例}
+
+制作特殊光效，比如人物肖像
+
+\subsection{ 减去Subtract}
+
+\subsubsection{ 公式}
+
+$$r=Subtract(b,a)= ba$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(b,a)=round(ba)\times fill + (1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v2d53dc2015b77b95957a54da826609bc3.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 减去
+	public static BlendColor Substact(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = SubstactChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = SubstactChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = SubstactChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red *255, green* 255, blue * 255), opacity);
+	}
+	
+	private static double SubstactChannel(double baseValue, double blendValue, double fill) {
+		return ColorUtils.round(ColorUtils.round((baseValue  blendValue), 1, 0) *fill + (1  fill)* baseValue, 1, 0);
+	}
+\end{lstlisting}
+
+
+
+减    去(Substact)      RGB[ 91.80,  63.20,  45.60]~ HSY[22.86,  46.20,  69.84 ]~ HSB[ 22.86,  50.33,  36.00]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v20f515f1e9dd7fc6f392f56de94902ae0.png)
+
+\subsubsection{用途示例}
+
+制作线稿效果
+
+\subsection{ 划分Divide}
+
+\subsubsection{ 公式}
+
+$$r=Divide(b,a)= \dfrac{b}{a}$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(b,a)= \dfrac{b}{a}\times fill + (1fill)\times b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(b,a)=op\times Fill(b,a)+(1op)\times b$$
+划分和颜色减淡可以通过一次负片操作转换
+
+\subsubsection{ 一次负片}
+
+$$r=Divide(b,1a)=\dfrac{b}{1a}=ColorDodge(b,a)$$
+
+\subsubsection{ 映射面和同图等效曲线}
+
+![Image](https://pic4.zhimg.com/80/v25e193e50cbd8dd4cd476a5069e67b20e.jpg)
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 划分
+	public static BlendColor Divide(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		double red = DivdeChannel(colorBase.red.get01Value(), colorBlend.red.get01Value(), fill);
+		double green = DivdeChannel(colorBase.green.get01Value(), colorBlend.green.get01Value(), fill);
+		double blue = DivdeChannel(colorBase.blue.get01Value(), colorBlend.blue.get01Value(), fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	
+	private static double DivdeChannel(double baseValue, double blendValue, double fill) {
+		return ColorUtils.round(Math.min(1, baseValue / blendValue) * fill + (1  fill) * baseValue, 1, 0);
+	}
+\end{lstlisting}
+
+
+
+划    分(Divide)        RGB[145.56, 122.00,  69.14]~ HSY[41.50,  76.42, 123.25 ]~ HSB[ 41.50,  52.50,  57.08]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2ab78fbb77ada3679ed9f2e4cd3a2ba63.png)
+
+\subsubsection{ 用途示例}
+
+颜色矫正
+
+\section{颜色组}
+
+这一组和其他都不同，这一组是基于HSY颜色空间，并且设计的计算都是方程组
+转化伪代码
+*计算明度*
+$$Lum(C)=0.3\times C_{red}+0.59\times C_{green} + 0.11\times C_{blue}$$
+*计算饱和度*
+$$Sat(C)=Max(C_{red},C_{green},C_{blue})$$
+
+这里采用了比较取巧的做法，就是只涉及饱和度和明度的改变，不涉及直接改变色相，因为改变色相相当于直接同时改变饱和度和明度。
+
+下面是改变明度的伪代码
+
+$$\begin{aligned}SetLum(C,lum)&\\& \begin{aligned}&lum  Lum(C)\\&C_{red}=C_{red}+d\\& C_{green}=C_{green}+d\\&C_{blue}=C_{blue}+d\\ &return\space ClipColor(C)\end{aligned}\end{aligned}$$
+这是修改饱和度的伪代码
+$$\begin{aligned}SetSat(C,sat)&\\&\begin{aligned}&if \quad C_{max}>C_{min}\\&\quad C_{mid}=\dfrac{(C_{mid}C_{min})\times sat}{C_{max}C_{min}}\\&\quad C_{max}=sat\\&else\\&\quad C_{mid}=C_{max}=0\\&C_{min}=0\\&return \quad C\end{aligned}\end{aligned}$$
+这是矫正误差的伪代码
+$$\begin{aligned} ClipColor(C)&\\&\begin{aligned}&lum= Lum(c)\\&min = Min(C_{red},C_{green},C_{blue}) \\&max = Max(C_{red},C_{green},C_{blue})\\&if \space min<0\\&\quad C_{red}=lum+\dfrac{(C_{red}lum)\times lum}{lummin}\\&\quad C_{green}=lum+\dfrac{(C_{green}lum)\times lum}{lummin}\\&\quad C_{blue}=lum+\dfrac{(C_{blue}lum)\times lum}{lummin}\\&if \space max>1\\&\quad C_{red}=lum+\dfrac{(C_{red}lum)\times (1lum)}{maxlum}\\&\quad C_{green}=lum+\dfrac{(C_{green}lum)\times  (1lum)}{maxlum}\\&\quad C_{blue}=lum+\dfrac{(C_{blue}lum)\times  (1lum)}{maxlum}\\&return\space C\end{aligned}\end{aligned}$$
+
+\subsection{ 色相Hue}
+
+计算方法是基于这个公式
+$$(H_r,S_r,Y_r)=Hue((H_a,S_a,Y_a),(H_b,S_b,Y_b))=(H_a,S_b,Y_b)$$
+算出HSY的值之后再把HSY转化为RGB的数值
+
+此时我们想修改基础图层的色相，但是我们只有修改饱和度和明度的公式，于是我们直接对混合图层使用设置饱和度和明度于是我们得到
+$$Hue(C_b,C_a)=SetLum(SetSat(C_a,Sat(C_b)),Lum(C_b))$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(C_b,C_a)= Hue(C_b,C_a) \times fill + (1fill)\times C_b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(C_b,C_a)=op\times Fill(C_b,C_a)+(1op)\times C_b$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 色相模式
+	public static BlendColor HUE(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		BlendColor temp = HUE_Sub(colorBase, colorBlend);
+		double red = temp.red.get01Value() * fill + colorBase.red.get01Value() * (1  fill);
+		double green = temp.green.get01Value() * fill + colorBase.green.get01Value() * (1  fill);
+		double blue = temp.blue.get01Value() * fill + colorBase.blue.get01Value() * (1  fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+	}
+	private static BlendColor HUE_Sub(BlendColor colorBase, BlendColor colorBlend) {
+		return ColorUtils.setLum(ColorUtils.setSat(colorBlend, colorBase.getSat()), colorBase.getLum());
+	}
+\end{lstlisting}
+
+
+
+色    相(hue)           RGB[104.91,  79.93,  76.97]~ HSY[6.36,  27.94,  87.10  ]~ HSB[  6.36,  26.63,  41.14]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2014e9514d99f0218051a2aa9c930b8a6.png)
+
+\subsubsection{ 用途示例}
+
+\subsection{ 饱和度Saturation}
+
+\subsubsection{ 公式}
+
+计算方法是基于这个公式
+$$(H_r,S_r,Y_r)= Saturation((H_a,S_a,Y_a),(H_b,S_b,Y_b))=(H_b,S_a,Y_b)$$
+设置饱和度，就直接对基础图层使用设置饱和度
+$$Saturation(C_b,C_a)=SetLum(SetSat(C_b,Sat(C_s)),Lum(C_b))$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(C_b,C_a)= Saturation(C_b,C_a) fill + (1fill)\times C_b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(C_b,C_a)=op\times Fill(C_b,C_a)+(1op)\times C_b$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 饱和度模式
+	
+	public static BlendColor Saturation(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		
+		double redbase = colorBase.red.get01Value();
+		double greenbase = colorBase.green.get01Value();
+		double bluebase = colorBase.blue.get01Value();
+		BlendColor temp = Saturation_Sub(colorBase, colorBlend);
+		double red = temp.red.get01Value() * fill + redbase * (1  fill);
+		double green = temp.green.get01Value() * fill + greenbase * (1  fill);
+		double blue = temp.blue.get01Value() * fill + bluebase * (1  fill);
+		return ColorUtils.Opacity(new BlendColor(redbase * 255, greenbase * 255, bluebase * 255),
+		new BlendColor(red * 255, green * 255, blue * 255), opacity);
+		
+	}
+	
+	private static BlendColor Saturation_Sub(BlendColor colorBase, BlendColor colorBlend) {
+		double sat = colorBlend.getSat();
+		double lum = colorBase.getLum();
+		return ColorUtils.setLum(ColorUtils.setSat(colorBase, sat), lum);
+	}
+\end{lstlisting}
+
+
+
+饱 和 度(Saturation)    RGB[114.94,  78.83,  55.54]~ HSY[23.53,  59.40,  87.10 ]~ HSB[ 23.53,  51.68,  45.07]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v2ace28108d5121cef49c399019b5f2b2a.png)
+
+\subsubsection{ 用途示例}
+
+颜色匹配
+
+\subsection{ 颜色Color}
+
+计算方法是基于这个公式
+$$(H_r,S_r,Y_r)= Color((H_a,S_a,Y_a),(H_b,S_b,Y_b))=(H_a,S_a,Y_b)$$
+直接对混合图层使用设置明度，则可以得到需要的等效结果
+$$Color(C_b,C_a)=SetLum(C_a,Lum(C_b))$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(C_b,C_a)= Saturation(C_b,C_a) fill + (1fill)\times C_b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(C_b,C_a)=op\times Fill(C_b,C_a)+(1op)\times C_b$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 颜色模式
+	public static BlendColor BlendColor(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		BlendColor temp = Color_Sub(colorBase, colorBlend);
+		double red = temp.red.get01Value() * fill + colorBase.red.get01Value() * (1  fill);
+		double green = temp.green.get01Value() * fill + colorBase.green.get01Value() * (1  fill);
+		double blue = temp.blue.get01Value() * fill + colorBase.blue.get01Value() * (1  fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red * 255, green * 255, blue * 255), opacity);
+		
+	}
+	
+	private static BlendColor Color_Sub(BlendColor colorBase, BlendColor colorBlend) {
+		return ColorUtils.setLum(colorBlend, colorBase.getLum());
+	}
+\end{lstlisting}
+
+
+
+颜    色(BlendColor)    RGB[104.67,  78.71,  84.15]~ HSY[347.43,  25.96,  87.10]~ HSB[347.43,  24.80,  41.05]
+
+
+\subsubsection{ 验证}
+
+![Image](https://pic4.zhimg.com/80/v21d6240071278c85bc7b5d8d69d0fe7d6.png)
+
+\subsubsection{ 用途示例}
+
+\subsection{ 明度Luminosity}
+
+计算方法是基于这个公式
+$$(H_r,S_r,Y_r)= Luminosity((H_a,S_a,Y_a),(H_b,S_b,Y_b))=(H_b,S_b,Y_a)$$
+
+\subsubsection{ 设置明度，就直接使用设置明度}
+
+$$Luminosity(C_b,C_a)=SetLum(C_b,Lum(C_a))$$
+
+\subsubsection{ 结合填充}
+
+$$r=Fill(C_b,C_a)= Luminosity(C_b,C_a) fill + (1fill)\times C_b$$
+
+\subsubsection{ 融合不透明度}
+
+$$r=Opacity(C_b,C_a)=op\times Fill(C_b,C_a)+(1op)\times C_b$$
+
+\subsubsection{ 程序模拟该模式计算结果}
+
+\begin{lstlisting}
+	// 明度模式
+	public static BlendColor Luminosity(BlendColor colorBase, BlendColor colorBlend, double fill, double opacity) {
+		BlendColor temp = Luminosity_Sub(colorBase, colorBlend);
+		double red = temp.red.get01Value() *fill + colorBase.red.get01Value()* (1  fill);
+		double green = temp.green.get01Value() *fill + colorBase.green.get01Value()* (1  fill);
+		double blue = temp.blue.get01Value() *fill + colorBase.blue.get01Value()* (1  fill);
+		return ColorUtils.Opacity(colorBase, new BlendColor(red *255, green* 255, blue * 255), opacity);
+	}
+	
+	private static BlendColor Luminosity_Sub(BlendColor colorBase, BlendColor colorBlend) {
+		return ColorUtils.setLum(colorBase, colorBlend.getLum());
+	}
+\end{lstlisting}
+
+
+
+明    度(Luminosity)    RGB[109.89,  78.89,  58.89]~ HSY[23.53,  51.00,  85.99 ]~ HSB[ 23.53,  46.41,  43.09]
+
+\subsubsection{ 验证}
+![Image](https://pic4.zhimg.com/80/v25b2305d24a5fbcf7bff941833cb96c61.png)
+\subsubsection{ 用途示例}
+\paragraph{和黑白调整图层配合，可以实现一些特殊效果}
+\section{特殊的5种模式}
+\subsection{ 穿透}
+\paragraph{穿透会出现在建立分组的时候，如果选择穿透，则此时效果和不建分组一样，但是如果修改为正常或者其他模式，则会先把这一组的图层计算出结果，然后用结果作为混合图层和下方图层进行运算。}
+\subsection{ 相加}
+相加在计算和应用图像中，此时相当于强化的线性减淡，公式为
+$$Add(b,a)= \dfrac{b+a}{缩放}+补偿值$$
+缩放的取值范围是$[1,2]$
+补偿值的取值范围是$[0,255]$
+\subsection{ 相减}
+相减在计算和应用图像中，此时相当于强化的减去，公式为
+$$Subtract(b,a)= \dfrac{ba}{缩放}+补偿值$$
+缩放的取值范围是$[1,2]$
+补偿值的取值范围是$[0,255]$
+\subsection{ 背后}
+\paragraph{背后模式简单来说就是，有像素点则笔刷或油漆桶工具不能修改，没有像素点的透明像素可以被修改。}
+\subsection{ 擦除}
+功能相当于橡皮擦
+\section{调整图层和图层混合模式}
+
+如果调整图层和混合图层混用会发生什么
+我们假设调整图层为$Adjustment(Layer)$,
+则对于像素点$Adjustment(pix)$,
+对于通道$Adjustment(channel)$
+则结果公式可以写作
+$$r=BlendMode(b,Adjustment(b))$$
+也就是说相当于，先使用调整图层产生基础图层调整之后的图层，再使用调整后的图层和原先的基础图层进行图层混合模式的操作。
+此处我们以曲线调整图层为例
+如果我们对原图层新建调整图层，并且对调整图层使用图层混合模式
+
+![Image](https://pic4.zhimg.com/80/v2a16119664a7d3a4257652c6f4dbba4a1.png)
+如果是正常模式，则相当于原图，但是只要我们选择一个别的模式，或拉一下曲线，结果就会不同。
+![Image](https://pic4.zhimg.com/80/v239ce11d2676a3f31570af1806384f6da.png)
+我们可以看到在不拉曲线的前提下，结果和直接用原图做正片叠底是一样的。
+![Image](https://pic4.zhimg.com/80/v22f41ff9464de794b550931b111c5e786.png)
+
+\chapter{参考文档}
+
+<http://www.simplefilter.de/en/basics/mixmods.html>
+<https://printtechnologies.org/wpcontent/uploads/2020/03/pdfreference1.6addendumblendmodes.pdf>
+
+\end{document}

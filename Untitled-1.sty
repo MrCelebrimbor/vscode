@@ -1,0 +1,53 @@
+|正常|$a$| $fill\times result+(1-fill)\times b$ |   
+
+ |溶解 |$a$| $Random_{fill}(b,a)$|
+
+ |变暗 | $Min(b,a)$| $fill\times result+(1-fill)\times b$ |
+
+ |正片叠底 |$ b\times a$ | $fill\times result+(1-fill)\times b$    |
+
+ |线性加深 | $b-(1-a)$ |  $b-(1-a)\times fill$  |
+
+ |颜色加深 | $1-\frac{1-b}{1-(1-a)}$ | $1-\frac{1-b}{1-(1-a)\times fill}$   |
+
+ |深色 |$Min(Sum(Pix_b),Sum(Pix_a))$|$fill\times result+(1-fill)\times b$    |
+
+ |变亮 |  $Max(b,a)$| $fill\times result+(1-fill)\times b$    |
+
+ |滤色 | $1-(1-b)\times (1-a)$ |  $fill\times result+(1-fill)\times b$   |
+
+ |线性减淡 |  $b+a$| $b+a\times fill$   |
+
+ |颜色减淡|$ \frac{b}{1-a} $|$\frac{b}{1-a\times fill}$    |
+
+ |浅色|$Max(Sum(Pix_b),Sum(Pix_a))$|$fill\times result+(1-fill)\times b$    |
+
+ |叠加| $\left\{\begin{aligned}2ba||\text{当} 0\leq b \leq 0.5|1-2(1-b)(1-a)||\text{当} 0.5< b \leq 1|\end{aligned}\right.$ | $fill\times result+(1-fill)\times b$    |
+
+|柔光|$\left\{\begin{aligned}|(2a-1)(b^2-b)+b| \text{当}0\leq a \leq 0.5||(2a-1)(\sqrt{b}-b)+b|\text{当} 0.5< a \leq 1\end{aligned}\right.$  |$fill\times result+(1-fill)\times b$     |
+
+| 强光| $\left\{\begin{aligned}2ba||\text{当} 0\leq a \leq 0.5|1-2(1-b)(1-a)||\text{当} 0.5< a \leq 1|\end{aligned}\right.$ |$fill\times result+(1-fill)\times b$     |
+
+ |点光|$\left\{ \begin{aligned}|Min(b,2a)| \text{当}0\leq a \leq 0.5||Max(b,2(a-0.5))|\text{当} 0.5< a \leq 1  \end{aligned}\right.$  | $fill\times result+(1-fill)\times b$    |
+
+ |亮光|$\left\{ \begin{aligned}|1-\frac{(1-b)}{2a}|\text{当} 0\leq a \leq 0.5||\frac{b}{1-2(a-0.5)}|\text{当} 0.5< a \leq 1\end{aligned}\right.$  |$fill\times result+(1-fill)\times b$    |
+
+ |线性光|  $b+2a-1$|$\left\{\begin{aligned}b+2a\times fill-1||\text{当} 0\leq a \leq 0.5|b+2a\times fill-1\times fill||\text{当} 0.5< a \leq 1|\end{aligned}\right.$    |
+
+ |实色混合| $\left\{ \begin{aligned}|1|b+a\geq 1||0|else  \end{aligned}\right.$ |  $\left\{ \begin{aligned}|0|  \frac{fill\times a+b-fill}{(1-fill)}<0| |\frac{fill\times a+b-fill}{(1-fill)}|0\leq \frac{fill\times a+b-fill}{(1-fill)}\leq 1| |1|  \frac{fill\times a+b-fill}{(1-fill)}>1 \end{aligned}\right.$  |
+
+ |差值| $|b-a|$ |$|b-a|\times fill$    |
+
+| 排除|  $b+a-2ba$|$fill\times result+(1-fill)\times b$     |
+
+ |减去| $b-a$ | $fill\times result+(1-fill)\times b$    |
+
+| 划分| $\frac{b}{a}$ |$fill\times result+(1-fill)\times b$     |
+
+ |色相|  $(H_a,S_b,Y_b) $|$fill\times result+(1-fill)\times b$     |
+
+ |饱和度|  $(H_b,S_a,Y_b)$| $fill\times result+(1-fill)\times b$    |
+
+ |颜色| $(H_a,S_a,Y_b)$ |  $fill\times result+(1-fill)\times b$   |
+
+ |明度| $(H_b,S_b,Y_a)$ |  $fill\times result+(1-fill)\times b$   |

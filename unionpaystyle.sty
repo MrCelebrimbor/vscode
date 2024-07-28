@@ -1,0 +1,206 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{unionpaystyle}[2021/01/18 unionpaydocstyle; provided by Celebrimbor]
+%PDF自带索引
+\RequirePackage[breaklinks,colorlinks,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\RequirePackage{xeCJK}%支持中文环境
+\RequirePackage{color}%支持颜色环境
+\RequirePackage{fancyhdr}%设置页脚页眉需要的包
+\RequirePackage{fancybox}
+\RequirePackage{tikz}
+\RequirePackage{pgf-umlcd}
+% \RequirePackage{pgfplots}
+\usetikzlibrary{arrows,shapes,patterns,animations,backgrounds,chains,through,calc,positioning,graphs,intersections}  
+\RequirePackage{multicol}%多栏
+\RequirePackage{geometry}%页边距包
+\RequirePackage{graphicx}%图片包
+\RequirePackage[most]{tcolorbox}%超级🐂的box包，具体查看texdoc tcolorbox
+
+\RequirePackage{titlesec}%标题
+\RequirePackage{enumerate}%列表
+\RequirePackage{enumitem}%列表
+
+\RequirePackage{framed} 
+\RequirePackage{dingbat}
+%objc 代码块，目前只定义了python和OC,其他语言暂时没有完成
+\RequirePackage{javastyle}
+\RequirePackage[inline]{asymptote}
+\RequirePackage{booktabs}
+\RequirePackage{bbding}
+\RequirePackage{longtable}
+\RequirePackage{multirow}
+\RequirePackage{diagbox}%表头斜线
+\RequirePackage{varwidth}
+\RequirePackage{accsupp}
+\RequirePackage{listings} 
+\RequirePackage{makecell}
+%银联三色标的颜色值
+\definecolor{UnionPayGreen}{RGB}{0,105,100}
+\definecolor{UnionPayRed}{RGB}{251,15,37}
+\definecolor{UnionPayBlue}{RGB}{10,45,101} 
+\renewcommand{\today}{\number\year 年 \number\month 月 \number\day 日}
+\newcommand{\mytizpicture}[1]{
+     \begin{tikzpicture}
+        [node distance= 7 mm,
+        terminal/.style={
+            rounded rectangle,
+            minimum size=6mm,
+            text width=4.5em,
+            align=flush center,
+            inner sep=1pt,
+            very thick,
+            draw = red!50!black!50, minimum height=3em,
+            top color=white,
+            bottom color=red!50!black!20,
+            font=\ttfamily},
+        nonterminal/.style={
+            rectangle,
+            minimum size=6mm,
+            text width=4.5em, minimum height=3em,
+            align=flush center,
+            inner sep=1pt,
+            thick,
+            draw= red!50!black!50,rounded corners,
+            top color = white, 
+            bottom color = black!20,
+            font=\itshape
+            },
+        decision/.style={
+            shape aspect=2 ,
+            diamond, 
+            draw= red!50!black!50,
+            top color = white, 
+            bottom color = black!20,rounded corners,
+            thick,
+            fill=blue!20,
+            text width=4.5em,
+            align=flush center,
+            inner sep=1pt},
+        line/.style ={draw, thick, -latex',shorten >=2pt},
+        cloud/.style ={draw=red, thick, ellipse,fill=red!20,
+            minimum height=2em}]
+        ]]
+       #1
+        \end{tikzpicture}
+}
+\tcbuselibrary{skins,listings}
+%页边距
+\geometry{left=1cm,right=1cm,top=2.5cm,bottom=2cm}
+%定义行间距为1倍行距
+\renewcommand{\baselinestretch}{1}
+%重新定义缩进长度 
+\RequirePackage{indentfirst} 
+\setlength{\parindent}{2em} 
+\setlength{\headheight}{24.5pt}
+\addtolength{\topmargin}{-12.5pt}
+%页脚页眉
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\headwidth}{\textwidth}
+\renewcommand{\contentsname}{目录}
+\renewcommand{\listfigurename}{图像目录}
+\renewcommand{\listtablename}{表格目录}
+\renewcommand{\tablename}{表}
+\renewcommand{\figurename}{图}
+\lhead{\usebox{\uplogo}\quad 中国银联技术开发中心}
+\rhead{\leftmark}
+\cfoot{第 \thepage 页}
+\tcbset{colback=UnionPayGreen!10!white}
+\tcbsetforeverylayer{colframe=UnionPayRed!75!black}
+%三原色的框
+\newtcolorbox{unionpayBoxRed}{colback=UnionPayRed!5!white,colframe=UnionPayRed!75!black}
+\newtcolorbox{unionpayBoxBlue}{colback=UnionPayBlue!5!white,colframe=UnionPayBlue!75!black}
+\newtcolorbox{unionpayBoxGreen}{colback=UnionPayGreen!5!white,colframe=UnionPayGreen!75!black}
+\newtcolorbox{unionpayBoxRedWithTitle}[1]{colback=UnionPayRed!5!white,colframe=UnionPayRed!75!black,fonttitle=\bfseries,title=#1}
+\newtcolorbox{unionpayBoxBlueWithTitle}[1]{colback=UnionPayBlue!5!white,colframe=UnionPayBlue!75!black,fonttitle=\bfseries,title=#1}
+\newtcolorbox{unionpayBoxGreenWithTitle}[1]{colback=UnionPayGreen!5!white,colframe=UnionPayGreen!75!black,fonttitle=\bfseries,title=#1}
+
+\newcommand{\unionpayBoxRedSideBySideWithTitle}[3]{
+ \tcbset{colback=UnionPayRed!5!white,colframe=UnionPayRed!75!black}
+ \begin{tcolorbox}[title=#1,sidebyside,righthand width=\textwidth/2]
+    #2
+    \tcblower
+    #3
+    \end{tcolorbox}
+}
+% 下面是左右框的命令，自定义似乎不是特别方便
+% \tcbset{colback=red!5!white,colframe=red!75!black,fonttitle=\bfseries}
+% \begin{tcolorbox}[title=My title,sidebyside,righthand width=3cm]
+% This is the upper (\textit{left-handed}) part.
+% \tcblower
+% This is the lower (\textit{right-handed}) part.
+% \end{tcolorbox}
+
+
+% 行内的强调框
+\DeclareTotalTCBox{\UnionpayEnhanceBox}{ O{red} v !O{} }
+{ fontupper=\ttfamily,nobeforeafter,tcbox raise base,arc=0pt,outer arc=0pt,
+	top=0pt,bottom=0pt,left=0mm,right=0mm,
+	leftrule=0pt,rightrule=0pt,toprule=0.3mm,bottomrule=0.3mm,boxsep=0.5mm,
+	colback=#1!10!white,colframe=#1!50!black,#3}{#2}
+% shell行内    
+\DeclareTotalTCBox{\commandbox}{ s v }
+{verbatim,colupper=white,colback=black!75!white,colframe=black}
+{\IfBooleanTF{#1}{\textcolor{red}{\ttfamily\bfseries > }}{}
+%shell block
+\lstinline[language=command.com,keywordstyle=\color{blue!35!white}\bfseries]^#2^}
+\newtcblisting{commandshell}{colback=black,colupper=white,colframe=yellow!75!black,
+listing only,listing options={style=tcblatex,language=sh},
+every listing line={\textcolor{red}{\small\ttfamily\bfseries root \$> }}}
+
+% \setCJKmainfont 设置 CJK 主字体，也就是设置 \rmfamily 的 CJK 字体
+% \setCJKsansfont 设置 CJK 无衬线的字体，也就是设置 \sffamily 的 CJK 字体
+% \setCJKmonofont 设置 CJK 的等宽字体，也就是设置 \ttfamily 的 CJK 字体
+% 具体设置需要看电脑是否按照该字体
+\setmainfont{Times New Roman}%缺省英文字体.serif是有衬线字体sans serif无衬线字体
+
+\setCJKmainfont[ItalicFont=STSongti-SC-Light, BoldFont=STSongti-SC-Bold]{STSongti-SC-Regular}%衬线字体 缺省中文字体为
+\setCJKsansfont{STSongti-SC-Regular}
+\setCJKmonofont{STSongti-SC-Regular}%
+
+%-----------------------xeCJK下设置中文字体------------------------------%
+% 这里可以根据需要修改 
+% \setCJKfamilyfont{song}{STSongti-SC-Black}                             %宋体 song  
+% \newcommand{\song}{\CJKfamily{STSongti-SC-Black}}                        
+% \setCJKfamilyfont{fs}{STSongti-SC-Black}                      %仿宋2312 fs  
+% \newcommand{\fs}{\CJKfamily{STSongti-SC-Black}}                            
+% \setCJKfamilyfont{yh}{STSongti-SC-Black}                    %微软雅黑 yh  
+
+
+%------------------------------设置字体大小------------------------%
+\newcommand{\chuhao}{\fontsize{42pt}{\baselineskip}\selectfont}     %初号
+\newcommand{\xiaochuhao}{\fontsize{36pt}{\baselineskip}\selectfont} %小初号
+\newcommand{\yihao}{\fontsize{28pt}{\baselineskip}\selectfont}      %一号
+\newcommand{\erhao}{\fontsize{21pt}{\baselineskip}\selectfont}      %二号
+\newcommand{\xiaoerhao}{\fontsize{18pt}{\baselineskip}\selectfont}  %小二号
+\newcommand{\sanhao}{\fontsize{15.75pt}{\baselineskip}\selectfont}  %三号
+\newcommand{\sihao}{\fontsize{14pt}{\baselineskip}\selectfont}%     四号
+\newcommand{\xiaosihao}{\fontsize{12pt}{\baselineskip}\selectfont}  %小四号
+\newcommand{\wuhao}{\fontsize{10.5pt}{\baselineskip}\selectfont}    %五号
+\newcommand{\xiaowuhao}{\fontsize{9pt}{\baselineskip}\selectfont}   %小五号
+\newcommand{\liuhao}{\fontsize{7.875pt}{\baselineskip}\selectfont}  %六号
+\newcommand{\qihao}{\fontsize{5.25pt}{\baselineskip}\selectfont}    %七号
+
+%------------------------------设置标题格式------------------------%
+\titleformat{\chapter}[display]
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+{\normalfont\Large\bfseries}{\thesection }{1em}{}
+\titleformat{\subsection}
+{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+{\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
+\titleformat{\paragraph}[runin]
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titleformat{\subparagraph}[runin]
+{\normalfont\normalsize\bfseries}{\thesubparagraph}{1em}{}
+\titlespacing*{\chapter} {0pt}{50pt}{40pt}
+\titlespacing*{\section} {0pt}{3.5ex plus 1ex minus .2ex}{2.3ex plus .2ex}
+\titlespacing*{\subsection} {0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+\titlespacing*{\subsubsection}{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+\titlespacing*{\paragraph} {0pt}{3.25ex plus 1ex minus .2ex}{1em}
+\titlespacing*{\subparagraph} {\parindent}{3.25ex plus 1ex minus .2ex}{1em}
+
+%------------------------------设置列表样式------------------------%
+% \setlist[enumerate,1]{label=(\arabic*).,font=\textup,
+% leftmargin=7mm,labelsep=1.5mm,topsep=0mm,itemsep=-0.8mm}
+% \setlist[enumerate,2]{label=(\alph*).,font=\textup,
+% leftmargin=7mm,labelsep=1.5mm,topsep=-0.8mm,itemsep=-0.8mm}

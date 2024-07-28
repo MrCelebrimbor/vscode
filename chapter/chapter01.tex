@@ -1,0 +1,238 @@
+
+\begin{lstlisting}
+	public class BlendColor {
+		public ColorItem red;
+		public ColorItem green;
+		public ColorItem blue;
+		public List<ColorItem> orderColorList;
+		
+		public BlendColor(double redv, double greenv, double bluev) {
+			ColorItem red = new ColorItem("red", redv);
+			ColorItem green = new ColorItem("green", greenv);
+			ColorItem blue = new ColorItem("blue", bluev);
+			this.orderColorList = new ArrayList<ColorItem>();
+			this.red = red;
+			this.green = green;
+			this.blue = blue;
+			this.orderColorList.add(red);
+			this.orderColorList.add(green);
+			this.orderColorList.add(blue);
+			
+			// 排序
+			Collections.sort(this.orderColorList);
+		}
+		
+		...
+		
+	}
+\end{lstlisting}
+
+
+\subsection{ 不透明度和填充}
+
+\paragraph{不透明度的英文单词是$Opacity$，填充的英文单词是$fill$，两者在图层混合模式中有时相同有时不同。具体我们会在后面说明。简单描述二者的区别，就是，不透明度就是将基础图层B和基础图层A，使用Opacity比例进行混合，公式如下：}
+\paragraph{$$Opacity(b,a)= op\times b + (1-op)\times BlendMode(b,a)$$}
+\paragraph{其中$op$代表不透明度}
+\subsection{ 代码实现}
+\begin{lstlisting}
+	public static BlendColor Opacity(BlendColor colorBase, BlendColor colorResult, double opacity) {
+		double redOpacity = colorResult.red.value *opacity + colorBase.red.value* (1 - opacity);
+		double greenOpacity = colorResult.green.value *opacity + colorBase.green.value* (1 - opacity);
+		double blueOpacity = colorResult.blue.value *opacity + colorBase.blue.value* (1 - opacity);
+		return new BlendColor(redOpacity, greenOpacity, blueOpacity);
+	}
+\end{lstlisting}
+\paragraph{如果是$Fill$则$$Fill(b,a)= BlendMode(b,a\times fill)$$这只是一个原则公式，具体情况要视具体模式确定，每一种计算方式都有细微区别。我们在此处不给出具体的公式和代码，但是我们在每一种中，我们会具体实现。填充的计算方式有八个和其他的不同，并且此时和不透明度的计算方法不一样。除了这八个，不透明度和填充变化的结果是相同的。他们分别是}
+\begin{itemize}
+	\item  线性加深
+	\item  颜色加深
+	\item  线性减淡
+	\item  颜色减淡
+	\item  线性光（线性减淡+线性加深）
+	\item  亮光（颜色减淡+颜色加深）
+	\item  实色混合（线性减淡+线性加深 或者 颜色减淡+颜色加深）
+	\item  差值
+\end{itemize}
+\paragraph{并且，填充的优先级高于不透明度，如果让两者一起产生效果则公式为：}
+$$Opacity(b,a)= op\times b + (1-op)\times Fill(b,a)$$
+\paragraph{如果使用一句话概括这二者的区别就是：}
+\begin{itemize}
+	\item 填充会让当前混合模式的效果弱化，弱化的程度取决于$fill$的大小。
+	\item 不透明度决定了当前混合模式结果图层和基础图层混合的比例，opacity越大，结果图层占比越大。
+	\item 结合前面的例子，填充越大放的茶叶就越多，不透明度越大，最后添加的水就越少。
+\end{itemize}
+\subsection{ 混合模式的组合}
+一般来说，混合模式的组合会以基础图层B或者混合图层A的中性灰分割线为界，组合两种不同的混合模式。
+\begin{itemize}
+	\item 例如，强光模式,它是由正片叠底和滤色两种模式以混合图层的中性灰分割线为界完成组合
+	\item 正片叠底$r=Multiply(b,a)=b\times a$
+	\item 滤色$r=Screen(b,a)=1-(1-b)(1-a)$
+	\item 强光$\begin{aligned}
+		r&=HardLight(b,a)\\\\&=\left\{ \begin{aligned}&Multiply(b,2a)&a\leq0.5\\ &Screen(b,2(a-0.5))&a > 0.5\end{aligned}\right.\\\\&=\left\{ \begin{aligned}&2ba&a\leq0.5\\ &1-2(1-b)(1-a)&a > 0.5\end{aligned}\right.
+	\end{aligned}$
+\end{itemize}
+\section{映射面}
+对于任意的一个混合模式，如果我们将它产生的所有基础图层和混合图层的结果，都在一个三维坐标中标记出来，则我们就会得到一个由$256\times 256=65536$个点组成的平面，换句话说，不管什么混合模式，基础图层和混合图层是什么值，在8bit的模式下，都只有$65536$种可能结果。这个面就是映射面。下图是我们将每一种图层混合模式表达式输入$Matlab$之后$Matlab$为我们呈现的结果，$x$轴为基础图层，$y$轴为混合图层，$z$轴为结果图层，我们可以看到越大的带你则越白，$1$最白，越小的点越黑，$0$ 最黑。于是我们就可以通过黑白程度来判断结果大小。
+\subsection{ 映射面示例}
+\paragraph{![Image](https://pic4.zhimg.com/80/v2bc814937fa47264ba476d043a0a3795e.jpg)
+	映射面和原图面的对比
+	![Image](https://pic4.zhimg.com/80/v216a0d2a1c380604e3203f4ede781d9b2.jpg)
+	使用混合模式后的映射面和原图映射面的对比
+	由上图可以得知，这是一种变暗模式并且在混合图层和基础图层中选择了比较小的作为结果，因为可以明显看到一部分平面在原平面（图中的蓝色平面）的下方
+}
+\subsection{ 同图平面}
+\paragraph{如果我们把基础图层和混合图层取值相同的点都标记出来，我们会得到一个对角平面，这个平面就是我们所说的同图平面
+	同图平面以及其和映射面相交的图像
+	![Image](https://pic4.zhimg.com/80/v2e6fc661b69173c9a15ee683053b6538f.jpg)
+	图中绿色的平面就是同图平面，他和映射面的交线就是我们可以使用曲线工具模拟的曲线。}
+\subsection{ 同图混合曲线}
+\paragraph{此时相当于$a=b$带入到某个图层混合模式的表达式中，我们此处以线性加深为例,线性加深原本的表达式是}
+$$r=LinearBurn(b,a)=b-(1-a)=b+a-1$$
+若$b=a$则表达式可以写成
+$$\begin{aligned} r&=(b,b)\\&=b-(1-b)\\&=b+b-1\\&=2b-1\end{aligned}$$
+\paragraph{![Image](https://pic4.zhimg.com/80/v20deecc51a6a4c53e0f23db906511176e.jpg)此时，在坐标系中画出该图像就如同上图所示。这时候我们只要打开曲线工具，然后拉一条曲线，和上图相同，就可以得到和这种混合模式在基础图层和混合图层相同的情况下的到结果图层相同的效果。![Image](https://pic4.zhimg.com/80/v265e5e77bdf915f38e6c65de875a24183.png)同图平面和映射面的交线就是可以使用曲线工具模拟这种混合模式时画出的曲线。同图平面有时候也可以作为分割平面，比如在实色混合模式的时候。}
+
+\subsection{ 中性灰平面}
+\paragraph{如果我们把基础图层或者绘画图层中128中性灰的点都标记出来，我们会得到一个中性灰平面
+	这个平面一般作为结合两种混合模式的分割面}
+\subsubsection{ 基础图层的中性灰平面}
+\paragraph{如果两种混合模式是以基础图层的取值作为分界依据的时候，使用此平面作为分割和结合依据。
+	![Image](https://pic4.zhimg.com/80/v2ecad10932b68cc2cc3750d4e00793e4e.jpg)}
+\subsubsection{ 混合图层的中性灰平面}
+\paragraph{如果两种混合模式是以混合图层的取值作为分界依据的时候，使用此平面作为分割和结合依据。
+	同图平面，中性灰平面（基础中性灰平面，混图层中性灰平面）都是结合两种混合模式的依据。
+	![Image](https://pic4.zhimg.com/80/v2d9caf5ad5e2dd58a1b2f93779785d1a1.jpg)}
+\subsection{ 关系总揽}
+为了方便大家理解，我们在此给出27中图层混合模式的总览
+![Image](https://pic4.zhimg.com/80/v218e51fcb0b686477a039e788d838a054.png)
+\begin{itemize}
+	\item 可转换：代表两种混合模式可以在一定条件下等效另外一种
+	\item 可交换：底图和绘画图层交换，两种混合模式产生的结果相同,也就是互逆
+	\item 组成：一种混合模式可以由另外一种组成
+\end{itemize}
+
+\subsubsection{ 特殊关系}
+从总览那幅图我们可以得出一些有趣的结论，就是有的混合模式在结合一些操作之后，结果等价于另外一种，有的图层混合模式和另外一种是互逆的关系，有些可以组合，有些对黑色无效，有些对白色无效，有些对中性灰无效，总之，他们的一切都蕴含在了公式中，如果你想搞清楚，就仔细研究一下。
+\subsection{ 可转换}
+可转换可能有些在实际操作中有偏差，因为在计算过程中可能出现大于1或者小于0的情况，导致被取舍。以下都是理论存在的情况。
+\begin{itemize}
+	\item 变亮$\Leftrightarrow$变暗（三次负片）
+	\item 滤色$\Leftrightarrow$正片叠底（三次负片）
+	\item 线性减淡$\Leftrightarrow$线性加深（三次负片）
+	\item 颜色减淡$\Leftrightarrow$颜色加深（三次负片）
+	\item 浅色$\Leftrightarrow$深色（三次负片）
+	\item 线性加深$\Leftrightarrow$减去（一次负片）
+	\item 颜色减淡$\Leftrightarrow$划分（一次负片）
+	\item 颜色加深$\Leftrightarrow$划分（两次负片）
+\end{itemize}
+
+\subsection{ 互逆（可交换）}
+\begin{itemize}
+	\item 叠加$\Leftrightarrow$强光
+	\item 颜色$\Leftrightarrow$明度
+	\item 实色混合$\Leftrightarrow$线性光（当实色混合填充设置为0.5也就是50%）
+\end{itemize}
+\subsection{ 组成}
+
+\begin{itemize}
+	\item 叠加 $=$ 正片叠底$+$滤色
+	\item 强光 $=$ 正片叠底$+$滤色
+	\item 线性光 $=$线性加深$+$线性减淡
+	\item 实色混合 $=$ 线性加深$+$线性减淡
+	\item 亮光 $=$ 颜色加深$+$颜色减淡
+	\item 点光 $=$ 变亮$+$变暗
+	\item 柔光$=$系数2的伽马矫正 $+$ 系数为0.5的伽马矫正
+\end{itemize}
+\subsubsection{ 另外五种}
+![Image](https://pic4.zhimg.com/80/v26638e1f23a70b8016dfafdb71f34a51c.png)
+\chapter{图层混合模式的种类}
+\subsection{ 色彩空间分类}
+分类方法有很多，如果按照色彩空间，可以分成两类，RGB和HSY
+\subsubsection{ RGB}
+除颜色组
+\subsubsection{ HSY}
+颜色组
+\subsection{ 是否产生新的数值}
+如果根据运算方式，可以分成两类，一类是替换式，一类是融合式
+\subsubsection{ 替换式}
+包括：
+\begin{itemize}
+	\item  正常组（正常，溶解）
+	\item 变暗组（变暗，深色）
+	\item 变亮组（变亮，浅色）
+	\item 颜色组（色相，饱和度，颜色，明度）
+\end{itemize}
+\paragraph{这种式的特点是，不会产生新的东西，只会复用之前的东西，比如正常组，正常就是直接使用混合图层作为结果，变暗组的变暗是使用基础图层和混合图层中通道较小的值组成新的像素，深色则是比较基础图层和混合图层通道值的和取小的作为结果，颜色组，则是根据HSY色彩空间，直接替换 HSY的数值，并且再转换为RGB，本质也是没有新的东西产生。}
+\subsubsection{ 融合式}
+包括：
+\begin{itemize}
+	\item 变暗组（正片叠底，颜色加深，线性加深）
+	\item 变亮组（滤色，颜色减淡，线性减淡）
+	\item 对比度组（叠加，柔光，强光，亮光，线性光，点光，实色混合）
+	\item 差值组（差值，排除，减去，划分）
+\end{itemize}
+虽然点光是变暗和变亮的混合，但是混合过程中做了处理，所以此处我们也按照融合式对待，此类的特点是，会产生新的数值。融合式就是产生了新的数值，比如正片叠底，结果图层的数值由基础图层和混合图层的乘积得到，他是不同于基础图层和混合图层的值。
+\subsection{ 是否顺序相关}
+如果根据是否受到图层顺序影响,如果$$BlendMode(b,a)=BlendMode(a,b)$$
+则说明结果不受图层顺序影响，前提是不调节$fill$和$Opacity$
+\subsubsection{ 顺序无关}
+\begin{itemize}
+	\item 变暗组 （变暗，线性加深，正片叠底，深色）
+	\item 变亮组 （变亮，线性减淡，滤色，浅色）
+	\item 对比度组 （实色混合）
+	\item 差值组（差值，排除）
+\end{itemize}
+
+\subsubsection{ 顺序相关}
+\begin{itemize}
+	\item 正常组 （正常，溶解）
+	\item 变暗组（颜色加深）
+	\item 变亮组（颜色减淡）
+	\item 对比度组（叠加，柔光，强光，亮光，线性光，点光）
+	\item 差值组（减去，划分）
+	\item 颜色组（色相，饱和度，颜色，明度）
+\end{itemize}
+\subsection{ 是否fill和Opacity不同}
+也就是说，调节填充的百分比，和不透明度的百分比，即使数值相同，结果也有可能不同。
+\subsubsection{ fill和Opacity产生不同影响}
+\begin{itemize}
+	\item 变暗组（线性加深，颜色加深）
+	\item 变亮组（线性减淡，颜色减淡）
+	\item 对比度组（亮光，线性光，实色混合）
+	\item 差值组（差值）
+\end{itemize}
+\subsubsection{ fill和Opacity产生相同影响}
+\begin{itemize}
+	\item 正常组 （正常，溶解）
+	\item 变暗组（变暗，正片叠底，深色）
+	\item 变亮组（变亮，滤色，浅色）
+	\item 对比度组（叠加，柔光，强光，点光）
+	\item 差值组（排除，减去，划分）
+	\item 颜色组（色相，饱和度，颜色，明度）
+\end{itemize}
+\subsubsection{ 混合模式相关符号}
+
+图层混合模式我们使用$BlendMode$来表示，这里是一个泛指，如果涉及到具体的混合模式，有专门的表示符号，比如正常模式使用$Normal$
+使用矩阵我们有：
+
+$$LayerA=\left\{ \begin{aligned}     &PixA_{(1,1)}&&\cdots&&PixA_{(1,n)}\\&\vdots && &&\vdots\\  &PixA_{(i,1)} &&\cdots&&PixA_{(i,n)}\\&\vdots && &&\vdots\\  &PixA_{(m,1)} &&\cdots&&PixA_{(m,n)}\\  \end{aligned}\right\}$$
+$$LayerB=\left\{ \begin{aligned}     &PixB_{(1,1)}&&\cdots&&PixB_{(1,n)}\\&\vdots && &&\vdots\\  &PixB_{(i,1)} &&\cdots&&PixB_{(i,n)}\\&\vdots && &&\vdots\\  &PixB_{(m,1)} &&\cdots&&PixB_{(m,n)}\\ \end{aligned}\right\}$$
+$$LayerR=\left\{ \begin{aligned}     &PixR_{(1,1)}&&\cdots&&PixR_{(1,n)}\\&\vdots && &&\vdots\\  &PixR_{(i,1)} &&\cdots&&PixR_{(i,n)}\\&\vdots && &&\vdots\\  &PixR_{(m,1)} &&\cdots&&PixR_{(m,n)}\\ \end{aligned}\right\}$$
+再结合上面的三者关系公式$$LayerR=BlendMode(LayerB,LayerA)$$
+我们得到
+$$LayerR=\left\{ \begin{aligned}   &BlendMode(PixB_{(1,1)},PixA_{(1,1)})&&\cdots&&BlendMode(PixB_{(1,n)},PixA_{(1,n)})\\&\vdots && &&\vdots\\&BlendMode(PixB_{(i,1)},PixA_{(i,1)})&&\cdots&&BlendMode(PixB_{(i,n)},PixA_{(i,n)})\\&\vdots && &&\vdots\\&BlendMode(PixB_{(m,1)},PixA_{(m,1)})&&\cdots&&BlendMode(PixB_{(m,n)},PixA_{(m,n)})\\\end{aligned}\right\}$$
+
+对于其中任意项
+$$Pix_R=BlendMode(Pix_B,Pix_A)$$
+如果这种混合模式基于RGB色彩空间则
+上述表达式可以写为
+
+$$(rc_{R},gc_{R},bc_{R})=BlendMode((rc_{B},gc_{B},bc_{B}),(rc_{A},gc_{A},bc_{A}))$$
+或者未归一化形式
+$$(RC_{R},GC_{R},BC_{R})=BlendMode((RC_{B}, GC_{B}, BC_{B}),(RC_{A}, GC_{A}, BC_{A}))$$
+如果这种混合模式基于HSY色彩空间
+$$(H_{R},S_{R},Y_{R})=BlendMode((H_{B},S_{B},Y_{B}),(H_{A},S_{A},Y_{A}))$$
+
+在下面的所有组中，如果不特别说明基于RGB色彩空间的混合模式都是使用归一化后的数值进行计算。
+
+并且，为了方便大家验证计算的正确性，这里提供一个java程序的链接给各位，GitHub的地址如下，输入你要混合的像素的数值，就可以得到对应混合模式混合的结果数值。
